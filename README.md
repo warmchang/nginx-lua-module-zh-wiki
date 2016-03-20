@@ -16,6 +16,7 @@ Table of Contents
 * [Typical Uses](#typical-uses)
 * [Nginx Compatibility](#nginx-compatibility)
 * [Installation](#installation)
+    * [Building as a dynamic module](#building-as-a-dynamic-module)
     * [C Macro Configurations](#c-macro-configurations)
     * [Installation on Ubuntu 11.10](#installation-on-ubuntu-1110)
 * [Community](#community)
@@ -56,7 +57,7 @@ Status
 Version
 =======
 
-该文档描述的 ngx_lua [v0.10.0](https://github.com/openresty/lua-nginx-module/tags) 是2016年1月11号发布。
+该文档描述的 ngx_lua [v0.10.2](https://github.com/openresty/lua-nginx-module/tags) 是2016年3月8号发布。
 
 Synopsis
 ========
@@ -123,7 +124,7 @@ Synopsis
                  ngx.say("status: ", res.status)
                  ngx.say("body:")
                  ngx.print(res.body)
-             end';
+             end
          }
      }
 
@@ -305,6 +306,18 @@ Lua 5.1可从 [Lua project 站点](http://www.lua.org/) 获取。
 
 [返回目录](#table-of-contents)
 
+Building as a dynamic module
+----------------------------
+
+从 NGINX 1.9.11 开始，你也能编译动态模块了，使用 `--add-dynamic-module=PATH` 选项替代 `./configure` 命令行的 `--add-module=PATH` 。然后就能在 `nginx.conf` 配置中通过 [load_module](http://nginx.org/en/docs/ngx_core_module.html#load_module) 指令完成模块加载，例如：
+
+```nginx
+load_module /path/to/modules/ndk_http_module.so;  # assuming NDK is built as a dynamic module too
+load_module /path/to/modules/ngx_http_lua_module.so;
+```
+
+[返回目录](#table-of-contents)
+
 C Macro Configurations
 ----------------------
 
@@ -390,7 +403,7 @@ Lua/LuaJIT 字节码 support
 都支持直接加载 Lua 5.1 和 LuaJIT 2.0/2.1 的二进制字节码文件。
 
 请注意，LuaJIT 2.0/2.1 生成的二进制格式与标准 Lua 5.1 解析器是不兼容的。
-所以如果使用在 ngx_lua 下使用 LuaJIT 2.0/2.1，那么 LuaJIT 兼容的二进制文件必须是下面这样生成的：
+所以如果在 ngx_lua 下使用 LuaJIT 2.0/2.1，那么 LuaJIT 兼容的二进制文件必须是下面这样生成的：
 
 ```bash
 
@@ -535,7 +548,7 @@ Statically Linking Pure Lua Modules
  ./configure --with-ld-opt="/path/to/foo.o /path/to/bar.o" ...
 ```
 
-如果你有非常多的 `.o` 文件，把这些文件的名字写到命令行中都不太可行，
+如果你有非常多的 `.o` 文件，把这些文件的名字都写到命令行中不太可行，
 这种情况下，对你的 `.o` 文件可以构建一个静态库（或者归档），参考：
 
 ```bash
@@ -683,7 +696,7 @@ require('xxx')
 
 上述输出说明文件`lib/foo/bar.lua`的 1489 行写入一个名为`contains`的全局变量，1506 行读取一个名为`setvar`的全局变量，1545 行读取一个名为`varexpand`的全局变量，
 
-这个工具能保证 Lua 模块中的局部变量全部是用 local 关键字定义过的，否则将会抛出一个运行时库。这样能阻止类似变量这样的资源的竞争。理由请参考 [Data Sharing within an Nginx Worker](http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker)
+这个工具能保证 Lua 模块中的局部变量全部是用 local 关键字定义过的，否则将会抛出一个运行时异常。这样能阻止类似变量这样的资源的竞争。理由请参考 [Data Sharing within an Nginx Worker](http://wiki.nginx.org/HttpLuaModule#Data_Sharing_within_an_Nginx_Worker)
 
 [返回目录](#table-of-contents)
 
@@ -850,25 +863,11 @@ TODO
 ====
 
 * cosocket：实现 LuaSocket 非连接的 UDP API。
-* 实现普通的 TCP 服务替代 HTTP 服务，并支持 Lua 代码。例如：
-
-```lua
-
- tcp {
-     server {
-         listen 11212;
-         handler_by_lua '
-             -- custom Lua code implementing the special TCP server...
-         ';
-     }
- }
-```
-
 * 实现普通的 UDP 服务替代 HTTP 服务，并支持 Lua 代码。例如：
 
 ```lua
 
- udp {
+ datagram {
      server {
          listen 1953;
          handler_by_lua '
@@ -892,6 +891,7 @@ TODO
 * 添加 `ignore_resp_headers`, `ignore_resp_body` 和 `ignore_resp`选项给 [ngx.location.capture](#ngxlocationcapture)、[ngx.location.capture_multi](#ngxlocationcapture_multi)，对于用户提升微小性能。
 * 增加抢占式的协程调度，用来自动 yielding 或 resuming Lua 虚拟机。
 * 添加 `stat` 类似 [mod_lua](https://httpd.apache.org/docs/trunk/mod/mod_lua.html)。
+* cosocket: 添加 SSL certificiate 客户端支持。
 
 [返回目录](#table-of-contents)
 
@@ -1256,9 +1256,9 @@ init_by_lua
  }
 ```
 
-需要注意，当配置重载（例如`HUP`信号）时 [lua_shared_dict](#lua_shared_dict)的共享数据是不会被清空。这种情况下，如果你不想在`init_by_lua`再次再初始化你的共享数据，你需要设置一个个性标识并且在你的`init_by_lua`代码中每次都做检查。
+需要注意，当配置重载（例如`HUP`信号）时 [lua_shared_dict](#lua_shared_dict)的共享数据是不会被清空的。这种情况下，如果你不想在`init_by_lua`再次初始化你的共享数据，你需要设置一个个性标识并且在你的`init_by_lua`代码中每次都做检查。
 
-因为在这个指令的Lua代码执行是在 Nginx fork 工作进程之前（如果有），加载的数据和代码将被友好 [Copy-on-write (COW)](http://en.wikipedia.org/wiki/Copy-on-write) 特性提供给其他所有工作进程，从而节省了大量内存。
+因为在这个上下文中的Lua代码是在 Nginx fork 工作进程之前（如果有）执行，加载的数据和代码将被友好 [Copy-on-write (COW)](http://en.wikipedia.org/wiki/Copy-on-write) 特性提供给其他所有工作进程，从而节省了大量内存。
 
 不要在这个上下文中初始化你自己的 Lua 全局变量，因为全局变量的使用有性能损失并会带来全局命名污染（可以查看 [Lua 变量范围](#lua-variable-scope)获取更多细节）。推荐的方式是正确使用 [Lua模块](http://www.lua.org/manual/5.1/manual.html#5.3) 文件（不要使用标准 Lua 函数 [module()](http://www.lua.org/manual/5.1/manual.html#pdf-module)来定义 Lua 模块，因为它同样对全局命名空间有污染），在`init_by_lua` 或 其他上下文中调用 [require()](http://www.lua.org/manual/5.1/manual.html#pdf-require) 来加载你自己的模块文件。[require()](http://www.lua.org/manual/5.1/manual.html#pdf-require) 会在全局 Lua 注册的`package.loaded`表中缓存 Lua 模块，所以在整个 Lua 虚拟机实例中你的模块将只会加载一次。
 
@@ -1570,7 +1570,7 @@ content_by_lua_file
 
 除了通过文件`<path-to-lua-script-file>`的内容指定 Lua 代码外，该指令与 [content_by_lua](#content_by_lua) 是等价的，该指令从`v0.5.0rc32`开始支持 [Lua/LuaJIT 字节码](#lualuajit-bytecode-support) 的执行。
 
-在`<path-to-lua-script-file>`中可以使用 Nginx 的内置变量用来提高灵活性，然而这带有一定的风险，通常并不推荐使用。
+在`<path-to-lua-script-file>`中可以使用 Nginx 的内置变量来提高灵活性，然而这带有一定的风险，通常并不推荐使用。
 
 当给定了一个相对路径如`foo/bar.lua`，它将会被转换成绝对路径，前面增加的部分路径是 Nginx 服务启动时通过命令行选项`-p PATH`决定的`server prefix`。
 
@@ -1835,7 +1835,7 @@ access_by_lua
  }
 ```
 
-和其他 access 阶段处理实现，[access_by_lua](#access_by_lua) 将 *不* 能运行在子请求中。
+和其他 access 阶段处理实现一样，[access_by_lua](#access_by_lua) 将 *不* 能运行在子请求中。
 
 注意，在 [access_by_lua](#access_by_lua) 处理内部，当调用`ngx.exit(ngx.OK)`时，nginx 请求将继续下一阶段的内容处理。要在 [access_by_lua](#access_by_lua) 处理中终结当前请求，调用 [ngx.exit](#ngxexit)，成功的请求设定 status >= 200 (`ngx.HTTP_OK`) 并 status < 300 (`ngx.HTTP_SPECIAL_RESPONSE`)，失败的请求设定`ngx.exit(ngx.HTTP_INTERNAL_SERVER_ERROR)` (或其他相关的)。
 
@@ -2299,7 +2299,7 @@ ssl_certificate_by_lua_block
 
 当 Nginx 开始对下游进行 SSL（https） 握手连接时，该指令执行用户 Lua 代码。
 
-特别是基于每个请求，设置 SSL 证书链并响应相符的私有密钥，这种情况特别有用。通过非阻塞 IO 操作，从远程（例如，使用 [cosocket](#ngxsockettcp) API）加载 SSL 握手配置也是很有用的。并且在每请求中使用纯 Lua 完成 OCSP stapling 处理也是可以的。
+特别是基于每个请求，设置 SSL 证书链与相应的私有密钥，这种情况特别有用。通过非阻塞 IO 操作，从远程（例如，使用 [cosocket](#ngxsockettcp) API）加载 SSL 握手配置也是很有用的。并且在每请求中使用纯 Lua 完成 OCSP stapling 处理也是可以的。
 
 另一个典型应用场景是在当前环境中非阻塞的方式完成 SSL 握手信号控制，例如在 [lua-resty-limit-traffic](https://github.com/openresty/lua-resty-limit-traffic) 库的辅助下。
 
@@ -3842,7 +3842,7 @@ ngx.req.http_version
 
 返回一个 Lua 数字代表当前请求的 HTTP 版本号。
 
-当前的可能结果值为 1.0, 1.1 和 0.9。无法识别时值时返回 `nil`。
+当前的可能结果值为 2.0, 1.0, 1.1 和 0.9。无法识别时值时返回 `nil`。
 
 这个方法在 `v0.7.17` 版本中首次引入。
 
@@ -4427,7 +4427,7 @@ ngx.req.discard_body
 
 **环境:** *rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;*
 
-明确丢弃请求体，也就是说，读取连接中的数据后立即丢弃。请注意，忽略请求体并不是丢弃请求体的正确方式，为避免破坏 HTTP 1.1 长连接或 HTTP 1.1 流水线 (pipelining)，必须使用本函数。
+明确丢弃请求体，也就是说，读取连接中的数据后立即丢弃（不以任何形式使用请求体）。
 
 这个函数是异步调用，将立即返回。
 
@@ -6209,7 +6209,7 @@ udpsock:receive
  sock:settimeout(1000)  -- one second timeout
  local data, err = sock:receive()
  if not data then
-     ngx.say("failed to read a packet: ", data)
+     ngx.say("failed to read a packet: ", err)
      return
  end
  ngx.say("successfully read a packet: ", data)
@@ -6698,10 +6698,14 @@ ngx.get_phase
     [init_by_lua](#init_by_lua) 或 [init_by_lua_file](#init_by_lua_file) 的运行环境。
 * `init_worker`
     [init_worker_by_lua](#init_worker_by_lua) 或 [init_worker_by_lua_file](#init_worker_by_lua_file) 的运行环境。
+* `ssl_cert`
+    [ssl_certificate_by_lua_block](#ssl_certificate_by_lua_block) 或 [ssl_certificate_by_lua_file](#ssl_certificate_by_lua_file) 的运行环境。
 * `set`
     [set_by_lua](#set_by_lua) 或 [set_by_lua_file](#set_by_lua_file) 的运行环境。
 * `rewrite`
     [rewrite_by_lua](#rewrite_by_lua) 或 [rewrite_by_lua_file](#rewrite_by_lua_file) 的运行环境。
+* `balancer`
+    [balancer_by_lua_block](#balancer_by_lua_block) 或 [balancer_by_lua_file](#balancer_by_lua_file) 的运行环境。
 * `access`
     [access_by_lua](#access_by_lua) 或 [access_by_lua_file](#access_by_lua_file)。
 * `content`

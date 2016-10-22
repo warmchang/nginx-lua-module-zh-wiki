@@ -6558,13 +6558,13 @@ tcpsock:send
 
 在当前 TCP 或 Unix Domain Socket 连接上非阻塞的发送数据。
 
-该方法是个异步操作，直到 *所有* 的数据全部被刷写到系统 socket 发送缓冲区或有错误发生，否则不会返回。
+该方法是个同步操作，直到 *所有* 的数据全部被刷写到系统 socket 发送缓冲区或有错误发生，否则不会返回。
 
 成功情况下，返回已经发送数据字节数的总数。其他情况，返回 `nil` 和错误描述信息。
 
 输入参数 `data` 可以是 Lua 字符串，也可以是包含字符串的（嵌套）Lua 表。对于输入参数是表的情况，该方法将逐一拷贝所有的字符串对象到底层的 Nginx socket 发送缓冲区，这是比 Lua 层面完成字符串拼接更好的优化方案。
 
-发送操作超时控制，是由 [lua_socket_send_timeout](#lua_socket_send_timeout) 配置指令和 [settimeout](#tcpsocksettimeout) 方法设置的。而后者有更高的优先级，例如：
+发送超时控制，是由 [lua_socket_send_timeout](#lua_socket_send_timeout) 配置指令和 [settimeout](#tcpsocksettimeout) 方法设置的。而后者有更高的优先级，例如：
 
 ```lua
 
@@ -6590,7 +6590,7 @@ tcpsock:receive
 
 根据读取规则或大小，从当前连接 socket 中接收数据。
 
-该方法是一个异步操作就像 [send](#tcpsocksend) 方法一样，并且是 100% 非阻塞的。
+与 [send](#tcpsocksend) 方法一样是同步操作，并且 100% 非阻塞。
 
 成功情况下，返回接收到的数据；失败情况，返回 `nil` 、一个错误描述信息以及目前接收到的部分数据。
 

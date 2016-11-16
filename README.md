@@ -57,7 +57,7 @@ Status
 Version
 =======
 
-该文档描述的 ngx_lua [v0.10.5](https://github.com/openresty/lua-nginx-module/tags) 是2016年5月25号发布。
+该文档描述的 ngx_lua [v0.10.7](https://github.com/openresty/lua-nginx-module/tags) 是2016年11月4号发布。
 
 Synopsis
 ========
@@ -249,6 +249,8 @@ Nginx Compatibility
 
 最新模块版本和 Nginx 的兼容列表：
 
+* 1.11.x (最后测试: 1.11.2)
+* 1.10.x
 * 1.9.x (最后测试: 1.9.15)
 * 1.8.x
 * 1.7.x (最后测试: 1.7.10)
@@ -276,9 +278,9 @@ Lua 5.1可从 [Lua project 站点](http://www.lua.org/) 获取。
 
 ```bash
 
- wget 'http://nginx.org/download/nginx-1.9.15.tar.gz'
- tar -xzvf nginx-1.9.15.tar.gz
- cd nginx-1.9.15/
+ wget 'http://nginx.org/download/nginx-1.11.2.tar.gz'
+ tar -xzvf nginx-1.11.2.tar.gz
+ cd nginx-1.11.2/
 
  # tell nginx's build system where to find LuaJIT 2.0:
  export LUAJIT_LIB=/path/to/luajit/lib
@@ -601,10 +603,10 @@ Data Sharing within an Nginx Worker
 
 ```nginx
  location /lua {
-     content_by_lua '
+     content_by_lua_block {
          local mydata = require "mydata"
          ngx.say(mydata.get_age("dog"))
-     ';
+     }
  }
 ```
 
@@ -705,9 +707,9 @@ Locations Configured by Subrequest Directives of Other Modules
 ```nginx
 
  location /foo {
-     content_by_lua '
+     content_by_lua_block {
          res = ngx.location.capture("/bar")
-     ';
+     }
  }
  location /bar {
      echo_location /blah;
@@ -730,7 +732,7 @@ Cosockets Not Available Everywhere
 ----------------------------------
 
 归咎于 `nginx` 内核的各种限制规则，cosocket API 在这些环境中是被禁的：
-[set_by_lua*](#set_by_lua)， [log_by_lua*](#log_by_lua)， [header_filter_by_lua*](#header_filter_by_lua) 和 [body_filter_by_lua](#body_filter_by_lua)。
+[set_by_lua*](#set_by_lua)， [log_by_lua*](#log_by_lua)， [header_filter_by_lua*](#header_filter_by_lua) 和 [body_filter_by_lua*](#body_filter_by_lua)。
 
 cosocket 在[init_by_lua*](#init_by_lua) 和 [init_worker_by_lua*](#init_worker_by_lua) 小节中也是被禁的，但我们后面将会添加这些环境的支持，因为在 nginx 内核上是没有这个限制的（或者这个限制是可以被绕过的）。
 
@@ -747,11 +749,11 @@ PCRE 的转义符号例如 `\d`,`\s` 以及 `\w` 等需要特别注意，因为�
 ```nginx
  # nginx.conf
  ? location /test {
- ?     content_by_lua '
+ ?     content_by_lua_block {
  ?         local regex = "\d+"  -- 这里是错的!!
  ?         local m = ngx.re.match("hello, 1234", regex)
  ?         if m then ngx.say(m[0]) else ngx.say("not matched!") end
- ?     ';
+ ?     }
  ? }
  # 结果为 "not matched!"
 ```
@@ -761,11 +763,11 @@ PCRE 的转义符号例如 `\d`,`\s` 以及 `\w` 等需要特别注意，因为�
 ```nginx
  # nginx.conf
  location /test {
-     content_by_lua '
+     content_by_lua_block {
          local regex = "\\\\d+"
          local m = ngx.re.match("hello, 1234", regex)
          if m then ngx.say(m[0]) else ngx.say("not matched!") end
-     ';
+     }
  }
  # 结果为 "1234"
 ```
@@ -777,11 +779,11 @@ PCRE 的转义符号例如 `\d`,`\s` 以及 `\w` 等需要特别注意，因为�
 ```nginx
  # nginx.conf
  location /test {
-     content_by_lua '
+     content_by_lua_block {
          local regex = [[\\d+]]
          local m = ngx.re.match("hello, 1234", regex)
          if m then ngx.say(m[0]) else ngx.say("not matched!") end
-     ';
+     }
  }
  # 结果为 to "1234"
  ```
@@ -793,11 +795,11 @@ PCRE 的转义符号例如 `\d`,`\s` 以及 `\w` 等需要特别注意，因为�
 ```nginx
  # nginx.conf
  location /test {
-     content_by_lua '
+     content_by_lua_block {
          local regex = [=[[0-9]+]=]
          local m = ngx.re.match("hello, 1234", regex)
          if m then ngx.say(m[0]) else ngx.say("not matched!") end
-     ';
+     }
  }
  # 结果为 "1234"
 ```
@@ -868,9 +870,9 @@ TODO
  datagram {
      server {
          listen 1953;
-         handler_by_lua '
+         handler_by_lua_block {
              -- custom Lua code implementing the special UDP server...
-         ';
+         }
      }
  }
 ```
@@ -953,7 +955,7 @@ Test Suite
 
 在一个特别的测试文件中，运行指定的测试块，对你需要进行块测试部分添加一行`--- ONLY`信息，并使用`prove`工具运行这个`.t`文件。
 
-此外，还有其他各种测试方式，基于 mockeagain， valgrind 等。参考 [Test::Nginx documentation](http://search.cpan.org/perldoc?Test::Nginx)，有更多不同高级测试方式的资料。也可以看看在 Amazon EC2 的 Nginx 集群测试报告 <http://qa.openresty.org.> 。
+此外，还有其他各种测试方式，基于 mockeagain， valgrind 等。参考 [Test::Nginx documentation](http://search.cpan.org/perldoc?Test::Nginx)，有更多不同高级测试方式的资料。也可以看看在 Amazon EC2 的 Nginx 集群测试报告 <http://qa.openresty.org> 。
 
 [返回目录](#table-of-contents)
 
@@ -1019,6 +1021,7 @@ Directives
 ==========
 
 * [lua_use_default_type](#lua_use_default_type)
+* [lua_malloc_trim](#lua_malloc_trim)
 * [lua_code_cache](#lua_code_cache)
 * [lua_regex_cache_max_entries](#lua_regex_cache_max_entries)
 * [lua_regex_match_limit](#lua_regex_match_limit)
@@ -1091,11 +1094,11 @@ Directives
 
 lua_use_default_type
 --------------------
-**语法:**: *lua_use_default_type on | off*
+**语法:** *lua_use_default_type on | off*
 
-**默认**: *lua_use_default_type on*
+**默认:** *lua_use_default_type on*
 
-**环境**: *http, server, location, location if*
+**环境:** *http, server, location, location if*
 
 指定响应头中 Content-Type 的默认值，是否使用 default_type 指令中指明的 MIME 类型。
 如果你的 Lua 请求处理程序不想要默认的 Content-Type 响应头，可以关闭这个指令。
@@ -1106,13 +1109,52 @@ lua_use_default_type
 
 [返回目录](#table-of-contents)
 
+lua_malloc_trim
+---------------
+**语法:** *lua_malloc_trim &lt;request-count&gt;*
+
+**默认:** *lua_malloc_trim 1000*
+
+**环境:** *http*
+
+当 NGINX 核心每执行 `N` 次请求，告诉底层 `libc` 运行库，释放已缓存空闲内存还给操作系统。
+`N` 的默认值是 1000。可以配置新的数值来控制 "请求数"，小的数字意味着更频繁的释放，这可能会引入比较高的 CPU 时间消耗和较少内存占用。
+而大的数字通常则占用较少的 CPU 时间消耗和较大的内存占用。
+所以这里需要根据自己的使用场景来调整。
+<!-- Asks the underlying `libc` runtime library to release its cached free memory back to the operating system every
+`N` requests processed by the NGINX core. By default, `N` is 1000. You can configure the request count
+by using your own numbers. Smaller numbers mean more frequent releases, which may introduce higher CPU time consumption and
+smaller memory footprint while larger numbers usually lead to less CPU time overhead and relatively larger memory footprint.
+Just tune the number for your own use cases. -->
+
+配置参数为 `0` ，代表关闭周期性的内存整理。
+<!-- Configuring the argument to `0` essentially turns off the periodical memory trimming altogether. -->
+
+```nginx
+
+ lua_malloc_trim 0;  # 完全关闭 trim
+```
+
+为了完成请求计数，目前是在 NGINX 的 log 阶段实现的。
+当有子请求存在并且 `nginx.conf` 中出现 [log_subrequest on](http://nginx.org/en/docs/http/ngx_http_core_module.html#log_subrequest) 指令，可以能更快获得计数增长。
+默认情况只统计“主请求”计数。
+<!-- The current implementation uses an NGINX log phase handler to do the request counting. So the appearance of the
+[log_subrequest on](http://nginx.org/en/docs/http/ngx_http_core_module.html#log_subrequest) directives in `nginx.conf`
+may make the counting faster when subrequests are involved. By default, only "main requests" count. -->
+
+注意：该指令 *不* 影响 LuaJIT 基于 `mmap` 系统调用的内存分配。
+
+该指令在 `v0.10.7` 版本首次引入。
+
+[返回目录](#directives)
+
 lua_code_cache
 --------------
-**语法**: *lua_code_cache on | off*
+**语法:** *lua_code_cache on | off*
 
-**默认**: *lua_code_cache on*
+**默认:** *lua_code_cache on*
 
-**环境**: *http, server, location, location if*
+**环境:** *http, server, location, location if*
 
 打开或者关闭 *_by_lua_file 指令（类似 set_by_lua_file 和 content_by_lua_file）
 中指定的 Lua 代码，以及 Lua 模块的 Lua 代码缓存。
@@ -1191,7 +1233,7 @@ lua_package_path
 
 **环境:** *http*
 
-设置 [set_by_lua](#set_by_lua)，[content_by_lua](#content_by_lua) 和 其他脚本对 Lua 模块的查找路径。路径字符串是标准 Lua 路径格式，特殊标识 `;;` 可被用来代表原始搜索路径。
+设置 [set_by_lua*](#set_by_lua)，[content_by_lua*](#content_by_lua) 和 其他脚本对 Lua 模块的查找路径。路径字符串是标准 Lua 路径格式，特殊标识 `;;` 可被用来代表原始搜索路径。
 
 从`v0.5.0rc29`发行版开始，特殊符号`$prefix` 或 `${prefix}`可用于搜索路径字符串中。`server prefix`的值，通常是由 Nginx 服务启动时的`-p PATH`命令行决定的。
 
@@ -1206,7 +1248,7 @@ lua_package_cpath
 
 **环境:** *http*
 
-设置 [set_by_lua](#set_by_lua)，[content_by_lua](#content_by_lua) 和其他脚本对 Lua C 模块的查找路径。 cpath 路径字符串是标准 Luacpath 路径格式，特殊标识`;;` 可被用来代表原始 cpath 路径。
+设置 [set_by_lua*](#set_by_lua)，[content_by_lua*](#content_by_lua) 和其他脚本对 Lua C 模块的查找路径。 cpath 路径字符串是标准 Luacpath 路径格式，特殊标识`;;` 可被用来代表原始 cpath 路径。
 
 从`v0.5.0rc29`发行版开始，特殊符号`$prefix` 或 `${prefix}`可用于搜索路径字符串中。`server prefix`的值，通常是由 Nginx 服务启动时的`-p PATH`命令行决定的。
 
@@ -1235,9 +1277,9 @@ init_by_lua
 
  server {
      location = /api {
-         content_by_lua '
+         content_by_lua_block {
              ngx.say(cjson.encode({dog = 5, cat = 6}))
-         ';
+         }
      }
  }
 ```
@@ -1255,10 +1297,10 @@ init_by_lua
 
  server {
      location = /api {
-         content_by_lua '
+         content_by_lua_block {
              local dogs = ngx.shared.dogs;
              ngx.say(dogs:get("Tom"))
-         ';
+         }
      }
  }
 ```
@@ -1483,10 +1525,10 @@ set_by_lua_block
 
 **阶段:** *rewrite*
 
-与 [set_by_lua](#set_by_lua) 指令相似，以下情况除外：
+与 [set_by_lua*](#set_by_lua) 指令相似，以下情况除外：
 
 1. 该指令在一对括号（`{}`）中直接内嵌 Lua 代码，替代之前 Nginx 的字符串（需要特殊字符转义）
-1. 该指令和 [set_by_lua](#set_by_lua) 一样，在 Lua 脚本的后面不支持额外参数
+1. 该指令和 [set_by_lua*](#set_by_lua) 一样，在 Lua 脚本的后面不支持额外参数
 
 例如：
 
@@ -1510,7 +1552,7 @@ set_by_lua_file
 
 **阶段:** *rewrite*
 
-除了通过文件`<path-to-lua-script-file>`的内容指定 Lua 代码外，该指令与 [set_by_lua](#set_by_lua) 是等价的，该指令从`v0.5.0rc32`开始支持 [Lua/LuaJIT 字节码](#lualuajit-bytecode-support) 的执行。
+除了通过文件`<path-to-lua-script-file>`的内容指定 Lua 代码外，该指令与 [set_by_lua*](#set_by_lua) 是等价的，该指令从`v0.5.0rc32`开始支持 [Lua/LuaJIT 字节码](#lualuajit-bytecode-support) 的执行。
 
 对于该指令，对`<path-to-lua-script-file>`的字符串参数支持内联 Nginx 变量。但必须要额外注意注入攻击。
 
@@ -2044,8 +2086,8 @@ body_filter_by_lua
  location /foo {
      # fastcgi_pass/proxy_pass/...
 
-     header_filter_by_lua 'ngx.header.content_length = nil';
-     body_filter_by_lua 'ngx.arg[1] = string.len(ngx.arg[1]) .. "\\n"';
+     header_filter_by_lua_block { ngx.header.content_length = nil }
+     body_filter_by_lua_block { ngx.arg[1] = string.len(ngx.arg[1]) .. "\\n" };
  }
 ```
 
@@ -2071,7 +2113,7 @@ body_filter_by_lua_block
 
 **阶段:** *output-body-filter*
 
-与 [body_filter_by_lua](#body_filter_by_lua) 指令相似，只不过该指令在一对括号（`{}`）中直接内嵌 Lua 代码，替代之前 Nginx 的字符串（需要特殊字符转义）。
+与 [body_filter_by_lua*](#body_filter_by_lua) 指令相似，只不过该指令在一对括号（`{}`）中直接内嵌 Lua 代码，替代之前 Nginx 的字符串（需要特殊字符转义）。
 
 例如：
 
@@ -2095,7 +2137,7 @@ body_filter_by_lua_file
 
 **阶段:** *output-body-filter*
 
-除了通过文件`<path-to-lua-script-file>`的内容指定 Lua 代码外，该指令与 [body_filter_by_lua](#body_filter_by_lua) 是等价的，该指令从`v0.5.0rc32`开始支持 [Lua/LuaJIT 字节码](#lualuajit-bytecode-support) 的执行。
+除了通过文件`<path-to-lua-script-file>`的内容指定 Lua 代码外，该指令与 [body_filter_by_lua*](#body_filter_by_lua) 是等价的，该指令从`v0.5.0rc32`开始支持 [Lua/LuaJIT 字节码](#lualuajit-bytecode-support) 的执行。
 
 当给定了一个相对路径如`foo/bar.lua`，它将会被转换成绝对路径，前面增加的部分路径是 Nginx 服务启动时通过命令行选项`-p PATH`决定的`server prefix`。
 
@@ -2150,7 +2192,7 @@ log_by_lua
      }
 
      location = /status {
-         content_by_lua '
+         content_by_lua_block {
              local log_dict = ngx.shared.log_dict
              local sum = log_dict:get("upstream_time-sum")
              local nb = log_dict:get("upstream_time-nb")
@@ -2161,7 +2203,7 @@ log_by_lua
              else
                  ngx.say("no data yet")
              end
-         ';
+         }
      }
  }
 ```
@@ -2287,11 +2329,11 @@ lua_need_request_body
 
 为了读取请求体数据到 [$request_body](http://nginx.org/en/docs/http/ngx_http_core_module.html#var_request_body) 变量，[client_body_buffer_size](http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size) 必须要与 [client_max_body_size](http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size) 有同样的大小。因为内容大小超过 [client_body_buffer_size](http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_buffer_size) 但是小于 [client_max_body_size](http://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size) 时， Nginx 将把缓冲内存数据存到一个磁盘的临时文件上，这将导致 [$request_body](http://nginx.org/en/docs/http/ngx_http_core_module.html#var_request_body) 变量是一个空值。
 
-如果当前 location 包含 [rewrite_by_lua](#rewrite_by_lua) 或 [rewrite_by_lua_file](#rewrite_by_lua_file) 指令，请求体将在 [rewrite_by_lua](#rewrite_by_lua) 或 [rewrite_by_lua_file](#rewrite_by_lua_file) 代码运行之前（还是在`rewrite`阶段）被读取。如果只有 [content_by_lua](#content_by_lua) 指令，请求体直到内容生成的 Lua 代码执行时才会读取（既，请求体在处理生成返回数据阶段才回被读取）。
+如果当前 location 包含 [rewrite_by_lua*](#rewrite_by_lua) 指令，请求体将在 [rewrite_by_lua*](#rewrite_by_lua) 代码运行之前（还是在`rewrite`阶段）被读取。如果只有 [content_by_lua](#content_by_lua) 指令，请求体直到内容生成的 Lua 代码执行时才会读取（既，请求体在处理生成返回数据阶段才回被读取）。
 
 无论如何都非常推荐，使用 [ngx.req.read_body](#ngxreqread_body) 和 [ngx.req.discard_body](#ngxreqdiscard_body) 函数，可以更好的控制请求体的读取过程。
 
-这些也适用于 [access_by_lua](#access_by_lua) 和 [access_by_lua_file](#access_by_lua_file)。
+这个规则也适用于 [access_by_lua*](#access_by_lua) 。
 
 [返回目录](#directives)
 
@@ -2379,21 +2421,21 @@ ssl_session_fetch_by_lua_block
 
 **语法:** *ssl_session_fetch_by_lua_block { lua-script }*
 
-**环境:** *server*
+**环境:** *http*
 
 **阶段:** *right-before-SSL-handshake*
 
 该指令执行的代码，根据当前下游的 SSL 握手请求中的会话 ID，查找并加载 SSL 会话（如果有）。
 
-This directive runs Lua code to look up and load the SSL session (if any) according to the session ID
-provided by the current SSL handshake request for the downstream.
+<!-- This directive runs Lua code to look up and load the SSL session (if any) according to the session ID
+provided by the current SSL handshake request for the downstream. -->
 
 由 [lua-resty-core](https://github.com/openresty/lua-resty-core#readme) Lua 模块库内置的 [ngx.ssl.session](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl/session.md) API，可以获取当前会话 ID 并加载一个已缓存的 SSL 缓存数据。
 
-The Lua API for obtaining the current session ID and loading a cached SSL session data
+<!-- The Lua API for obtaining the current session ID and loading a cached SSL session data
 is provided in the [ngx.ssl.session](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl/session.md)
 Lua module shipped with the [lua-resty-core](https://github.com/openresty/lua-resty-core#readme)
-library.
+library. -->
 
 Lua API 可能会挂起，比如 [ngx.sleep](#ngxsleep) 和 [cosockets](#ngxsockettcp)，
 在这个环境中是启用的。
@@ -2401,24 +2443,37 @@ Lua API 可能会挂起，比如 [ngx.sleep](#ngxsleep) 和 [cosockets](#ngxsock
 该钩子可以与 [ssl_session_store_by_lua*](#ssl_session_store_by_lua_block) 一起使用，实现纯 Lua 的分布式缓存模型（例如基于 [cosocket](#ngxsockettcp) API）。
 如果找到一个已缓存 SSL 会话，将会加载到当前 SSL 会话环境中，SSL 会话将立即启动恢复，绕过昂贵的完整 SSL 握手过程（这里有非常昂贵 CPU 计算代价）。
 
-This hook, together with the [ssl_session_store_by_lua*](#ssl_session_store_by_lua_block) hook,
+<!-- This hook, together with the [ssl_session_store_by_lua*](#ssl_session_store_by_lua_block) hook,
 can be used to implement distributed caching mechanisms in pure Lua (based
 on the [cosocket](#ngxsockettcp) API, for example). If a cached SSL session is found
 and loaded into the current SSL connection context,
-SSL session resumption can then get immediately initiated and bypass the full SSL handshake process which is very expensive in terms of CPU time.
+SSL session resumption can then get immediately initiated and bypass the full SSL handshake process which is very expensive in terms of CPU time. -->
 
-请注意，TLS 会话票据是非常不同的，当使用会话票据时它是客户端完成 SSL 会话状态缓存。
-SSL 会话恢复是基于 TLS 会话票据自动完成，不需要该钩子参与（也不需要 [ssl_session_store_by_lua_block](#ssl_session_store_by_lua) 钩子）。
+请注意，TLS 会话票证是非常不同的，当使用会话票证时它是客户端完成 SSL 会话状态缓存。
+SSL 会话恢复是基于 TLS 会话票证自动完成，不需要该钩子参与（也不需要 [ssl_session_store_by_lua_block](#ssl_session_store_by_lua) 钩子）。
 该钩子主要是给老版本或缺少 SSL 客户端能力（只能通过会话 ID 方式完成 SSL 会话）。
 
-Please note that TLS session tickets are very different and it is the clients' responsibility
+<!-- Please note that TLS session tickets are very different and it is the clients' responsibility
 to cache the SSL session state when session tickets are used. SSL session resumptions based on
 TLS session tickets would happen automatically without going through this hook (nor the
 [ssl_session_store_by_lua_block](#ssl_session_store_by_lua) hook). This hook is mainly
-for older or less capable SSL clients that can only do SSL sessions by session IDs.
+for older or less capable SSL clients that can only do SSL sessions by session IDs. -->
 
 当同时指定了 [ssl_certificate_by_lua*](#ssl_certificate_by_lua_block)，该钩子通常在 [ssl_certificate_by_lua*](#ssl_certificate_by_lua_block) 之前运行。
 找到 SSL 会话并成功对当前 SSL 连接加载后， SSL 会话将会恢复，从而绕过 [ssl_certificate_by_lua*](#ssl_certificate_by_lua_block) 钩子。这种情况下，NGINX 也将直接绕过 [ssl_session_store_by_lua_block](#ssl_session_store_by_lua) 钩子，不需要了嘛。
+
+借助现代网络浏览器，在本地是比较容易测试这个钩子的。你可以暂时把下面这行配置放到 https server 小节，禁用 TLS 回话票证。
+
+    ssl_session_tickets off;
+
+但是在你把网站放到外网之前，不要忘记注释掉这行配置。
+
+<!-- To easily test this hook locally with a modern web browser, you can temporarily put the following line
+in your https server block to disable the TLS session ticket support:
+
+    ssl_session_tickets off;
+
+But do not forget to comment this line out before publishing your site to the world. -->
 
 如果你使用 [OpenResty](https://openresty.org/) 1.11.2.1 或后续版本绑定的 [官方的预编译包](http://openresty.org/en/linux-packages.html) ，那么一切都应只欠东风。
 
@@ -2434,6 +2489,8 @@ for older or less capable SSL clients that can only do SSL sessions by session I
 
 该小节在 `v0.10.6` 首次引入。
 
+请注意: 从 `v0.10.7` 版本开始，该指令只允许在 **http context** 环境中使用（因为 SSL 会话唤醒发生在服务名生效之前）。
+
 [返回目录](#directives)
 
 ssl_session_fetch_by_lua_file
@@ -2441,7 +2498,7 @@ ssl_session_fetch_by_lua_file
 
 **语法:** *ssl_session_fetch_by_lua_file &lt;path-to-lua-script-file&gt;*
 
-**环境:** *server*
+**环境:** *http*
 
 **阶段:** *right-before-SSL-handshake*
 
@@ -2451,6 +2508,8 @@ ssl_session_fetch_by_lua_file
 
 该指令在 `v0.10.6` 版本首次引入。
 
+请注意: 从 `v0.10.7` 版本开始，该指令只允许在 **http context** 环境中使用（因为 SSL 会话唤醒发生在服务名生效之前）。
+
 [返回目录](#directives)
 
 ssl_session_store_by_lua_block
@@ -2458,14 +2517,14 @@ ssl_session_store_by_lua_block
 
 **语法:** *ssl_session_store_by_lua_block { lua-script }*
 
-**环境:** *server*
+**环境:** *http*
 
 **阶段:** *right-after-SSL-handshake*
 
 该指令执行的代码，根据当前下游的 SSL 握手请求中的会话 ID，获取并保存 SSL 会话（如果有）。
 
 This directive runs Lua code to fetch and save the SSL session (if any) according to the session ID
-provided by the current SSL handshake request for the downstream. 
+provided by the current SSL handshake request for the downstream.
 
 被保存或缓存的 SSL 会话数据能被用到将来的 SSL 连接，恢复 SSL 会话却不需要历经完整 SSL 握手过程（这里有非常昂贵 CPU 计算代价）。
 
@@ -2478,7 +2537,22 @@ Lua API 可能会挂起，比如 [ngx.sleep](#ngxsleep) 和 [cosockets](#ngxsock
 
 由 [lua-resty-core](https://github.com/openresty/lua-resty-core#readme) Lua 模块库提供的 [ngx.ssl.session](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl/session.md) API，可以获取当前会话 ID 并关联到会话状态数据。
 
+借助现代网络浏览器，在本地是比较容易测试这个钩子的。你可以暂时把下面这行配置放到 https server 小节，禁用 TLS 回话票证。
+
+    ssl_session_tickets off;
+
+但是在你把网站放到外网之前，不要忘记注释掉这行配置。
+
+<!-- To easily test this hook locally with a modern web browser, you can temporarily put the following line
+in your https server block to disable the TLS session ticket support:
+
+    ssl_session_tickets off;
+
+But do not forget to comment this line out before publishing your site to the world. -->
+
 该指令在 `v0.10.6` 版本首次引入。
+
+请注意: 从 `v0.10.7` 版本开始，该指令只允许在 **http context** 环境中使用（因为 SSL 会话唤醒发生在服务名生效之前）。
 
 [返回目录](#directives)
 
@@ -2487,7 +2561,7 @@ ssl_session_store_by_lua_file
 
 **语法:** *ssl_session_store_by_lua_file &lt;path-to-lua-script-file&gt;*
 
-**环境:** *server*
+**环境:** *http*
 
 **阶段:** *right-before-SSL-handshake*
 
@@ -2498,6 +2572,8 @@ ssl_session_store_by_lua_file
 当给定了一个相对路径如 `foo/bar.lua`，它将会被转换成绝对路径，前面增加的部分路径是 Nginx 服务启动时通过命令行选项 `-p PATH` 决定的 `server prefix` 。
 
 该指令在 `v0.10.6` 版本首次引入。
+
+请注意: 从 `v0.10.7` 版本开始，该指令只允许在 **http context** 环境中使用（因为 SSL 会话唤醒发生在服务名生效之前）。
 
 [返回目录](#directives)
 
@@ -2544,7 +2620,7 @@ lua_socket_connect_timeout
 
 **环境:** *http, server, location*
 
-该指令控制 TCP/unix-domain socket 对象的 [connect](#tcpsockconnect) 方法默认超时时间，这个值可以被 [settimeout](#tcpsocksettimeout) 方法覆盖。
+该指令控制 TCP/unix-domain socket 对象的 [connect](#tcpsockconnect) 方法默认超时时间，这个值可以被 [settimeout](#tcpsocksettimeout) 或 [settimeouts](#tcpsocksettimeouts) 方法覆盖。
 
 `<time>`参数可以是整数，后面可以跟着像`s` (秒), `ms` (毫秒), `m` (分钟)的单位可选项。 默认的时间单位是`s`，也就是"秒"。默认值是`60s`。
 
@@ -2561,7 +2637,7 @@ lua_socket_send_timeout
 
 **环境:** *http, server, location*
 
-该指令控制 TCP/unix-domain socket 对象的 [send](#tcpsocksend) 方法默认超时时间，这个值可以被 [settimeout](#tcpsocksettimeout) 方法覆盖。
+该指令控制 TCP/unix-domain socket 对象的 [send](#tcpsocksend) 方法默认超时时间，这个值可以被 [settimeout](#tcpsocksettimeout) 或 [settimeouts](#tcpsocksettimeouts) 方法覆盖。
 
 `<time>`参数可以是整数，后面可以跟着像`s` (秒), `ms` (毫秒), `m` (分钟)的单位可选项。 默认的时间单位是`s`，也就是"秒"。默认值是`60s`。
 
@@ -2593,7 +2669,7 @@ lua_socket_read_timeout
 
 **阶段:** *依赖于使用环境*
 
-该指令控制 TCP/unix-domain socket 对象的 [receive](#tcpsockreceive) 方法、[receiveuntil](#tcpsockreceiveuntil) 方法返回迭代函数的默认超时时间。这个值可以被 [settimeout](#tcpsocksettimeout) 方法覆盖。
+该指令控制 TCP/unix-domain socket 对象的 [receive](#tcpsockreceive) 方法、[receiveuntil](#tcpsockreceiveuntil) 方法返回迭代函数的默认超时时间。这个值可以被 [settimeout](#tcpsocksettimeout) 或 [settimeouts](#tcpsocksettimeouts) 方法覆盖。
 
 `<time>`参数可以是整数，后面可以跟着像`s` (秒), `ms` (毫秒), `m` (分钟)的单位可选项。 默认的时间单位是`s`，也就是"秒"。默认值是`60s`。
 
@@ -2782,7 +2858,7 @@ rewrite_by_lua_no_postpone
 
 **环境:** *http*
 
-控制是否禁用 [rewrite_by_lua](#rewrite_by_lua)* 指令在`rewrite`阶段的延迟执行。该指令的默认值是 `off` ，在`rewrite`阶段的 Lua 代码将被延迟到最后执行。
+控制是否禁用 [rewrite_by_lua*](#rewrite_by_lua) 指令在`rewrite`阶段的延迟执行。该指令的默认值是 `off` ，在`rewrite`阶段的 Lua 代码将被延迟到最后执行。
 
 该指令是在`v0.5.0rc29`版本首次引入的。
 
@@ -2797,7 +2873,7 @@ access_by_lua_no_postpone
 
 **环境:** *http*
 
-控制是否禁用 [access_by_lua](#access_by_lua)* 指令在 `access` 请求处理阶段末尾的推迟执行。默认的，该指令是 `off` 并且 `access` 阶段的 Lua 代码是被延迟到末尾执行。
+控制是否禁用 [access_by_lua*](#access_by_lua) 指令在 `access` 请求处理阶段末尾的推迟执行。默认的，该指令是 `off` 并且 `access` 阶段的 Lua 代码是被延迟到末尾执行。
 
 该指令在 `v0.9.20` 版本首次引入。
 
@@ -2982,6 +3058,11 @@ Nginx API for Lua
 * [ngx.shared.DICT.replace](#ngxshareddictreplace)
 * [ngx.shared.DICT.delete](#ngxshareddictdelete)
 * [ngx.shared.DICT.incr](#ngxshareddictincr)
+* [ngx.shared.DICT.lpush](#ngxshareddictlpush)
+* [ngx.shared.DICT.rpush](#ngxshareddictrpush)
+* [ngx.shared.DICT.lpop](#ngxshareddictlpop)
+* [ngx.shared.DICT.rpop](#ngxshareddictrpop)
+* [ngx.shared.DICT.llen](#ngxshareddictllen)
 * [ngx.shared.DICT.flush_all](#ngxshareddictflush_all)
 * [ngx.shared.DICT.flush_expired](#ngxshareddictflush_expired)
 * [ngx.shared.DICT.get_keys](#ngxshareddictget_keys)
@@ -3000,6 +3081,7 @@ Nginx API for Lua
 * [tcpsock:receiveuntil](#tcpsockreceiveuntil)
 * [tcpsock:close](#tcpsockclose)
 * [tcpsock:settimeout](#tcpsocksettimeout)
+* [tcpsock:settimeouts](#tcpsocksettimeouts)
 * [tcpsock:setoption](#tcpsocksetoption)
 * [tcpsock:setkeepalive](#tcpsocksetkeepalive)
 * [tcpsock:getreusedtimes](#tcpsockgetreusedtimes)
@@ -3039,7 +3121,7 @@ Nginx API for Lua
 
 Introduction
 ------------
-`nginx.conf` 文件中各种 `*_by_lua` 和 `*_by_lua_file` 配置指令的作用是提供 Lua API 的网关。下面介绍的这些 Lua API 指令，只能在上述配置指令的环境中，通过用户 Lua 代码调用。
+`nginx.conf` 文件中各种 `*_by_lua`、`*_by_lua_block` 和 `*_by_lua_file` 配置指令的作用是提供 Lua API 的网关。下面介绍的这些 Lua API 指令，只能在上述配置指令的环境中，通过用户 Lua 代码调用。
 
 Lua 中使用的 API 以两个标准模块的形式封装：`ngx` 和 `ndk`。这两个模块在 ngx_lua 默认的全局作用域中，在 ngx_lua 指令中总是可用。
 
@@ -3080,7 +3162,7 @@ ngx.arg
 
 **环境:** *set_by_lua&#42;, body_filter_by_lua&#42;*
 
-当被用在 [set_by_lua](#set_by_lua) 或 [set_by_lua_file](#set_by_lua_file) 指令环境中时，本表是一个只读表，包含输入参数供配置命令使用：
+当被用在 [set_by_lua*](#set_by_lua) 指令环境中时，本表是一个只读表，包含输入参数供配置命令使用：
 
 ```lua
 
@@ -3105,7 +3187,7 @@ ngx.arg
 
 将输出 `88`，是 `32` 和 `56` 的和。
 
-当被用在 [body_filter_by_lua](#body_filter_by_lua) 或 [body_filter_by_lua_file](#body_filter_by_lua_file) 指令环境中时，本表第一个元素是送给输出过滤器的输入数据块，第二个元素是 "eof" 布尔标记，用以标识整个输出数据流是否结束。
+当被用在 [body_filter_by_lua*](#body_filter_by_lua) 指令中时，本表第一个元素是送给输出过滤器的输入数据块，第二个元素是 "eof" 布尔标记，用以标识整个输出数据流是否结束。
 
 可以通过直接给相应的表元素赋值，设置送给下游 Nginx 输出过滤器的数据块和 "eof" 标记。当给 `ngx.arg[1]` 赋值 `nil` 或 Lua 空字符串时，将不发送任何数据给下游的 Nginx 输出过滤器。
 
@@ -3131,10 +3213,10 @@ ngx.var.VARIABLE
 
  location /foo {
      set $my_var ''; # 需要在设置时创建 $my_var 变量
-     content_by_lua '
+     content_by_lua_block {
          ngx.var.my_var = 123;
          ...
-     ';
+     }
  }
 ```
 
@@ -3169,7 +3251,7 @@ Nginx 正则表达式捕获组变量 `$1`、`$2`、`$3` 等，也可以通过这
 
 Core constants
 --------------
-**环境:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, &#42;log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;*
+**环境:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, &#42;log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;*
 
 ```lua
     ngx.OK (0)
@@ -3195,7 +3277,7 @@ Core constants
 
 HTTP method constants
 ---------------------
-**环境:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
+**环境:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
 
 
       ngx.HTTP_GET
@@ -3221,7 +3303,7 @@ HTTP method constants
 
 HTTP status constants
 ---------------------
-**环境:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;*
+**环境:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;*
 
 ```nginx
 
@@ -3265,7 +3347,7 @@ HTTP status constants
 
 Nginx log level constants
 -------------------------
-**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
+**环境:** *init_by_lua&#42;, init_worker_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
 
 
 ```lua
@@ -3289,7 +3371,7 @@ print
 -----
 **语法:** *print(...)*
 
-**环境:** *init_by_lua&#42;, init_worker_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
+**环境:** *init_by_lua&#42;, init_worker_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
 
 
 将参数值以 `ngx.NOTICE` 日志级别写入 nginx 的 `error.log` 文件。
@@ -3310,7 +3392,7 @@ Lua 的 `nil` 值输出 `"nil"` 字符串，Lua 的布尔值输出 `"true"` 或 
 
 ngx.ctx
 -------
-**环境:** *init_worker_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;*
+**环境:** *init_worker_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;*
 
 这个 Lua 表可以用来存储基于请求的 Lua 环境数据，其生存周期与当前请求相同 (类似 Nginx 变量)。
 
@@ -3319,15 +3401,15 @@ ngx.ctx
 ```nginx
 
  location /test {
-     rewrite_by_lua '
+     rewrite_by_lua_block {
          ngx.ctx.foo = 76
-     ';
-     access_by_lua '
+     }
+     access_by_lua_block {
          ngx.ctx.foo = ngx.ctx.foo + 3
-     ';
-     content_by_lua '
+     }
+     content_by_lua_block {
          ngx.say(ngx.ctx.foo)
-     ';
+     }
  }
 ```
 
@@ -3345,21 +3427,21 @@ ngx.ctx
 ```nginx
 
  location /sub {
-     content_by_lua '
+     content_by_lua_block {
          ngx.say("sub pre: ", ngx.ctx.blah)
          ngx.ctx.blah = 32
          ngx.say("sub post: ", ngx.ctx.blah)
-     ';
+     }
  }
 
  location /main {
-     content_by_lua '
+     content_by_lua_block {
          ngx.ctx.blah = 73
          ngx.say("main pre: ", ngx.ctx.blah)
          local res = ngx.location.capture("/sub")
          ngx.print(res.body)
          ngx.say("main post: ", ngx.ctx.blah)
-     ';
+     }
  }
 ```
 
@@ -3380,16 +3462,16 @@ ngx.ctx
 ```nginx
 
  location /new {
-     content_by_lua '
+     content_by_lua_block {
          ngx.say(ngx.ctx.foo)
-     ';
+     }
  }
 
  location /orig {
-     content_by_lua '
+     content_by_lua_block {
          ngx.ctx.foo = "hello"
          ngx.exec("/new")
-     ';
+     }
  }
 ```
 
@@ -3578,13 +3660,13 @@ URI 请求串可以与 URI 本身连在一起，例如，
 
  location /lua {
      set $dog 'hello';
-     content_by_lua '
+     content_by_lua_block {
          res = ngx.location.capture("/other",
              { share_all_vars = true });
 
          ngx.print(res.body)
          ngx.say(ngx.var.uri, ": ", ngx.var.dog)
-     ';
+     }
  }
 ```
 
@@ -3606,13 +3688,13 @@ URI 请求串可以与 URI 本身连在一起，例如，
 
  location /lua {
      set $dog 'hello';
-     content_by_lua '
+     content_by_lua_block {
          res = ngx.location.capture("/other",
              { copy_all_vars = true });
 
          ngx.print(res.body)
          ngx.say(ngx.var.uri, ": ", ngx.var.dog)
-     ';
+     }
  }
 ```
 
@@ -3630,21 +3712,21 @@ URI 请求串可以与 URI 本身连在一起，例如，
 ```nginx
 
  location /other {
-     content_by_lua '
+     content_by_lua_block {
          ngx.say("dog = ", ngx.var.dog)
          ngx.say("cat = ", ngx.var.cat)
-     ';
+     }
  }
 
  location /lua {
      set $dog '';
      set $cat '';
-     content_by_lua '
+     content_by_lua_block {
          res = ngx.location.capture("/other",
              { vars = { dog = "hello", cat = 32 }});
 
          ngx.print(res.body)
-     ';
+     }
  }
 ```
 
@@ -3660,18 +3742,18 @@ URI 请求串可以与 URI 本身连在一起，例如，
 ```nginx
 
  location /sub {
-     content_by_lua '
+     content_by_lua_block {
          ngx.ctx.foo = "bar";
-     ';
+     }
  }
  location /lua {
-     content_by_lua '
+     content_by_lua_block {
          local ctx = {}
          res = ngx.location.capture("/sub", { ctx = ctx })
 
          ngx.say(ctx.foo);
          ngx.say(ngx.ctx.foo);
-     ';
+     }
  }
 ```
 
@@ -3687,15 +3769,15 @@ URI 请求串可以与 URI 本身连在一起，例如，
 ```nginx
 
  location /sub {
-     content_by_lua '
+     content_by_lua_block {
          ngx.ctx.foo = "bar";
-     ';
+     }
  }
  location /lua {
-     content_by_lua '
+     content_by_lua_block {
          res = ngx.location.capture("/sub", { ctx = ngx.ctx })
          ngx.say(ngx.ctx.foo);
-     ';
+     }
  }
 ```
 
@@ -3787,7 +3869,7 @@ ngx.location.capture_multi
 
 ngx.status
 ----------
-**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;*
+**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;*
 
 读写当前请求的响应状态码。这个方法需要在发送响应头前调用。
 
@@ -3811,7 +3893,7 @@ ngx.header.HEADER
 
 **语法:** *value = ngx.header.HEADER*
 
-**环境:** *rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;*
+**环境:** *rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;*
 
 修改、添加、或清除当前请求待发送的 `HEADER` 响应头信息。
 
@@ -3876,7 +3958,7 @@ ngx.header.HEADER
 
 读取时，头名称中的下划线 (`_`) 也会被替换成连字符 (`-`)，并且大小写不敏感。如果该头信息不存在，将返回 `nil`。
 
-这个 API 在 [header_filter_by_lua](#header_filter_by_lua) 和 [header_filter_by_lua_file](#header_filter_by_lua_file) 环境中非常有用，例如：
+这个 API 在 [header_filter_by_lua*](#header_filter_by_lua) 环境中非常有用，例如：
 
 ```nginx
 
@@ -3919,7 +4001,7 @@ ngx.resp.get_headers
 --------------------
 **语法:** *headers = ngx.resp.get_headers(max_headers?, raw?)*
 
-**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;, balancer_by_lua&#42;*
+**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, balancer_by_lua&#42;*
 
 返回一个 Lua 表，包含当前请求的所有响应头信息。
 
@@ -4109,7 +4191,7 @@ ngx.req.set_uri
  ngx.req.set_uri("/foo")
 ```
 
-`jump` 参数只可以在 [rewrite_by_lua](#rewrite_by_lua) 和 [rewrite_by_lua_file](#rewrite_by_lua_file) 指令中被设置为 `true`。不能在其他环境中使用 jump，否则将抛出 Lua 异常。
+`jump` 参数只可以在 [rewrite_by_lua*](#rewrite_by_lua) 指令中被设置为 `true`。不能在其他环境中使用 jump，否则将抛出 Lua 异常。
 
 下面的示例复杂一些，包含正则表达式替换：
 
@@ -4202,14 +4284,14 @@ ngx.req.get_uri_args
 --------------------
 **语法:** *args = ngx.req.get_uri_args(max_args?)*
 
-**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;*
+**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;*
 
 返回一个 Lua table，包含当前请求的所有 URL 查询参数。
 
 ```nginx
 
  location = /test {
-     content_by_lua '
+     content_by_lua_block {
          local args = ngx.req.get_uri_args()
          for key, val in pairs(args) do
              if type(val) == "table" then
@@ -4218,7 +4300,7 @@ ngx.req.get_uri_args
                  ngx.say(key, ": ", val)
              end
          end
-     ';
+     }
  }
 ```
 
@@ -4298,14 +4380,14 @@ ngx.req.get_post_args
 ---------------------
 **语法:** *args, err = ngx.req.get_post_args(max_args?)*
 
-**环境:** *rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;*
+**环境:** *rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;*
 
 返回一个 Lua table，包含当前请求的所有 POST 查询参数 (MIME type 是 `application/x-www-form-urlencoded`)。使用前需要调 用 [ngx.req.read_body](#ngxreqread_body) 读取完整请求体，或通过设置 [lua_need_request_body](#lua_need_request_body) 指令为 on 以避免报错。
 
 ```nginx
 
  location = /test {
-     content_by_lua '
+     content_by_lua_block {
          ngx.req.read_body()
          local args, err = ngx.req.get_post_args()
          if not args then
@@ -4319,7 +4401,7 @@ ngx.req.get_post_args
                  ngx.say(key, ": ", val)
              end
          end
-     ';
+     }
  }
 ```
 
@@ -4400,7 +4482,7 @@ ngx.req.get_headers
 -------------------
 **语法:** *headers = ngx.req.get_headers(max_headers?, raw?)*
 
-**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua, log_by_lua&#42;*
+**环境:** *set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;*
 
 返回一个 Lua table，包含当前请求的所有请求头信息。
 
@@ -4690,7 +4772,7 @@ ngx.req.init_body
  ngx.req.finish_body()
 ```
 
-此函数可以与 [ngx.req.append_body](#ngxreqappend_body)，[ngx.req.finish_body](#ngxreqfinish_body) 和 [ngx.req.socket](#ngxreqsocket) 一起，使用纯 Lua 语言实现高效的输入过滤器 (在 [rewrite_by_lua](#rewrite_by_lua)* 或 [access_by_lua](#access_by_lua)* 环境中)，与其他 Nginx 内容处理 handler 或上游模块例如 [ngx_http_proxy_module](http://nginx.org/en/docs/http/ngx_http_proxy_module.html) 和 [ngx_http_fastcgi_module](http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html) 配合使用。
+此函数可以与 [ngx.req.append_body](#ngxreqappend_body)，[ngx.req.finish_body](#ngxreqfinish_body) 和 [ngx.req.socket](#ngxreqsocket) 一起，使用纯 Lua 语言实现高效的输入过滤器 (在 [rewrite_by_lua*](#rewrite_by_lua) 或 [access_by_lua*](#access_by_lua) 环境中)，与其他 Nginx 内容处理 handler 或上游模块例如 [ngx_http_proxy_module](http://nginx.org/en/docs/http/ngx_http_proxy_module.html) 和 [ngx_http_fastcgi_module](http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html) 配合使用。
 
 这个函数在 `v0.5.11` 版本中首次引入。
 
@@ -4708,7 +4790,7 @@ ngx.req.append_body
 
 需要强调的是，在当前请求的所有请求体被写入完成后，必须调用 [ngx.req.finish_body](#ngxreqfinish_body) 以结束写入。
 
-此函数可以与 [ngx.req.init_body](#ngxreqinit_body)，[ngx.req.finish_body](#ngxreqfinish_body)，和 [ngx.req.socket](#ngxreqsocket) 一起，使用纯 Lua 语言实现高效的输入过滤器 (在 [rewrite_by_lua](#rewrite_by_lua)* 或 [access_by_lua](#access_by_lua)* 环境中)，与其他 Nginx 内容处理程序或上游模块例如 [ngx_http_proxy_module](http://nginx.org/en/docs/http/ngx_http_proxy_module.html) 和 [ngx_http_fastcgi_module](http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html) 配合使用。
+此函数可以与 [ngx.req.init_body](#ngxreqinit_body)，[ngx.req.finish_body](#ngxreqfinish_body)，和 [ngx.req.socket](#ngxreqsocket) 一起，使用纯 Lua 语言实现高效的输入过滤器 (在 [rewrite_by_lua*](#rewrite_by_lua) 或 [access_by_lua*](#access_by_lua) 环境中)，与其他 Nginx 内容处理程序或上游模块例如 [ngx_http_proxy_module](http://nginx.org/en/docs/http/ngx_http_proxy_module.html) 和 [ngx_http_fastcgi_module](http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html) 配合使用。
 
 这个函数在 `v0.5.11` 版本中首次引入。
 
@@ -4724,7 +4806,7 @@ ngx.req.finish_body
 
 结束新请求体构造过程，该请求体由 [ngx.req.init_body](#ngxreqinit_body) 和 [ngx.req.append_body](#ngxreqappend_body) 创建。
 
-此函数可以与 [ngx.req.init_body](#ngxreqinit_body)，[ngx.req.append_body](#ngxreqappend_body)，和 [ngx.req.socket](#ngxreqsocket) 一起，使用纯 Lua 语言实现高效的输入过滤器 (在 [rewrite_by_lua](#rewrite_by_lua)* 或 [access_by_lua](#access_by_lua)* 环境中)，与其他 Nginx 内容处理程序或上游模块例如 [ngx_http_proxy_module](http://nginx.org/en/docs/http/ngx_http_proxy_module.html) 和 [ngx_http_fastcgi_module](http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html) 配合使用。
+此函数可以与 [ngx.req.init_body](#ngxreqinit_body)，[ngx.req.append_body](#ngxreqappend_body)，和 [ngx.req.socket](#ngxreqsocket) 一起，使用纯 Lua 语言实现高效的输入过滤器 (在 [rewrite_by_lua*](#rewrite_by_lua) 或 [access_by_lua*](#access_by_lua) 环境中)，与其他 Nginx 内容处理程序或上游模块例如 [ngx_http_proxy_module](http://nginx.org/en/docs/http/ngx_http_proxy_module.html) 和 [ngx_http_fastcgi_module](http://nginx.org/en/docs/http/ngx_http_fastcgi_module.html) 配合使用。
 
 这个函数在 `v0.5.11` 版本中首次引入。
 
@@ -4799,20 +4881,20 @@ ngx.exec
 ```nginx
 
  location /foo {
-     content_by_lua '
+     content_by_lua_block {
          ngx.exec("@bar", "a=goodbye");
-     ';
+     }
  }
 
  location @bar {
-     content_by_lua '
+     content_by_lua_block {
          local args = ngx.req.get_uri_args()
          for key, val in pairs(args) do
              if key == "a" then
                  ngx.say(val)
              end
          end
-     ';
+     }
  }
 ```
 
@@ -4820,7 +4902,7 @@ ngx.exec
 
 注意，此方法的调用终止当前请求的处理，并且它 *必须* 在 [ngx.send_headers](#ngxsend_headers) 或明确有响应体应答（比如 [ngx.print](#ngxprint) 或 [ngx.say](#ngxsay) 之一）之前调用。
 
-该方法调用与 `return` 语句联合使用，是推荐的代码样式，例如，通过`return ngx.exec(...)`，可使用在 [header_filter_by_lua](#header_filter_by_lua) 之外的环境中加强处理该请求被终止。
+该方法调用与 `return` 语句联合使用，是推荐的代码样式，例如，通过`return ngx.exec(...)`，可使用在 [header_filter_by_lua*](#header_filter_by_lua) 之外的环境中加强处理该请求被终止。
 
 [返回目录](#nginx-api-for-lua)
 
@@ -4832,7 +4914,13 @@ ngx.redirect
 
 发出一个 HTTP `301` 或 `302` 重定向到 `uri`。
 
-可选项 `status` 参数指定 `301` 或 `302` 哪个被使用。 默认使用 `302` （`ngx.HTTP_MOVED_TEMPORARILY`）。
+可选项 `status` 参数指定使用什么 HTTP 状态码。目前支持下面几个状态码：
+
+* `301`
+* `302` (默认)
+* `307`
+
+默认使用 `302` （`ngx.HTTP_MOVED_TEMPORARILY`）。
 
 假设当前服务名是 `localhost` 并且监听端口是 1984，这里有个例子：
 
@@ -4899,7 +4987,7 @@ ngx.redirect
 
 注意，此方法的调用终止当前请求的处理，并且它 *必须* 在 [ngx.send_headers](#ngxsend_headers) 或明确有响应体应答（比如 [ngx.print](#ngxprint) 或 [ngx.say](#ngxsay) 之一）之前调用。
 
-该方法调用与 `return` 语句联合使用，是推荐的代码样式，例如，通过`return ngx.redirect(...)`，可使用在 [header_filter_by_lua](#header_filter_by_lua) 之外的环境中加强处理该请求被终止。
+该方法调用与 `return` 语句联合使用，是推荐的代码样式，例如，通过`return ngx.redirect(...)`，可使用在 [header_filter_by_lua*](#header_filter_by_lua) 之外的环境中加强处理该请求被终止。
 
 [返回目录](#nginx-api-for-lua)
 
@@ -4913,7 +5001,7 @@ ngx.send_headers
 
 自从 `v0.8.3` 版本开始，成功情况该函数返回 `1` ，否则返回 `nil` 和错误字符描述信息。
 
-注意，在内容通过 [ngx.say](#ngxsay)、[ngx.print](#ngxprint) 输出或当 [content_by_lua](#content_by_lua) 存在时，ngx_lua 将自动发送头部内容，所以通常情况不需要手动发送应答头。
+注意，在内容通过 [ngx.say](#ngxsay)、[ngx.print](#ngxprint) 输出或当 [content_by_lua*](#content_by_lua) 存在时，ngx_lua 将自动发送头部内容，所以通常情况不需要手动发送应答头。
 
 [返回目录](#nginx-api-for-lua)
 
@@ -5024,7 +5112,7 @@ ngx.exit
 
 当 `status >= 200` (即 `ngx.HTTP_OK` 及以上) 时，本函数中断当前请求执行并返回状态值给 nginx。
 
-当 `status == 0` (即 `ngx.OK`) 时，本函数退出当前的“处理阶段句柄” (或当使用 [content_by_lua](#content_by_lua) 指令时的“内容句柄”) ，继续执行当前请求的下一个阶段 (如果有)。
+当 `status == 0` (即 `ngx.OK`) 时，本函数退出当前的“处理阶段句柄” (或当使用 [content_by_lua*](#content_by_lua) 指令时的“内容句柄”) ，继续执行当前请求的下一个阶段 (如果有)。
 
 `status` 参数可以是 `status` argument can be `ngx.OK`, `ngx.ERROR`, `ngx.HTTP_NOT_FOUND`, `ngx.HTTP_MOVED_TEMPORARILY` 或其它 [HTTP status constants](#http-status-constants)。
 
@@ -5082,11 +5170,11 @@ ngx.eof
 
  location = /async {
      keepalive_timeout 0;
-     content_by_lua '
+     content_by_lua_block {
          ngx.say("got the task!")
          ngx.eof()  -- 下游 HTTP 客户端将在这里断开连接
          -- 在这里访问 MySQL, PostgreSQL, Redis, Memcached 等 ...
-     ';
+     }
  }
 ```
 
@@ -5332,7 +5420,7 @@ ngx.md5
 ```nginx
 
  location = /md5 {
-     content_by_lua 'ngx.say(ngx.md5("hello"))';
+     content_by_lua_block { ngx.say(ngx.md5("hello")) }
  }
 ```
 
@@ -5927,6 +6015,11 @@ ngx.shared.DICT
 * [replace](#ngxshareddictreplace)
 * [delete](#ngxshareddictdelete)
 * [incr](#ngxshareddictincr)
+* [lpush](#ngxshareddictlpush)
+* [rpush](#ngxshareddictrpush)
+* [lpop](#ngxshareddictlpop)
+* [rpop](#ngxshareddictrpop)
+* [llen](#ngxshareddictllen)
 * [flush_all](#ngxshareddictflush_all)
 * [flush_expired](#ngxshareddictflush_expired)
 * [get_keys](#ngxshareddictget_keys)
@@ -5939,17 +6032,17 @@ ngx.shared.DICT
      lua_shared_dict dogs 10m;
      server {
          location /set {
-             content_by_lua '
+             content_by_lua_block {
                  local dogs = ngx.shared.dogs
                  dogs:set("Jim", 8)
                  ngx.say("STORED")
-             ';
+             }
          }
          location /get {
-             content_by_lua '
+             content_by_lua_block {
                  local dogs = ngx.shared.dogs
                  ngx.say(dogs:get("Jim"))
-             ';
+             }
          }
      }
  }
@@ -6191,6 +6284,114 @@ When the key does not exist or has already expired in the shared dictionary,
 
 [返回目录](#nginx-api-for-lua)
 
+ngx.shared.DICT.lpush
+---------------------
+**syntax:** *length, err = ngx.shared.DICT:lpush(key, value)*
+
+**context:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
+
+在基于共享字典 [ngx.shared.DICT](#ngxshareddict) 命名是 `key` 的链表头部插入指定的（数字或字符串）`value` ，返回值是插入后链表包含的对象数量。
+<!-- Inserts the specified (numerical or string) `value` at the head of the list named `key` in the shm-based dictionary [ngx.shared.DICT](#ngxshareddict). Returns the number of elements in the list after the push operation. -->
+
+如果 `key` 不存在，会在执行插入操作之前创建一个空的链表。当 `key` 已经有值但不是链表，会返回 `nil` 和 `"value not a list"`。
+
+<!-- If `key` does not exist, it is created as an empty list before performing the push operation. When the `key` already takes a value that is not a list, it will return `nil` and `"value not a list"`. -->
+
+当共享内存区间中的存储空间不足时，它永远不会覆盖这里未过期数据（最近最少使用）。这种情况，它将直接返回 `nil` 和字符串 `"no memory"`。
+
+<!-- It never overrides the (least recently used) unexpired items in the store when running out of storage in the shared memory zone. In this case, it will immediately return `nil` and the string "no memory". -->
+
+该特性在 `v0.10.6` 版本首次引入。
+
+更多功能请参考 [ngx.shared.DICT](#ngxshareddict)。
+
+[返回目录](#nginx-api-for-lua)
+
+ngx.shared.DICT.rpush
+---------------------
+**syntax:** *length, err = ngx.shared.DICT:rpush(key, value)*
+
+**context:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
+
+与 [lpush](#ngxshareddictlpush) 方法相似，但该方法将指定 `value` （数字或字符串） 插入到命名为 `key` 的链表末尾。
+
+<!-- Similar to the [lpush](#ngxshareddictlpush) method, but inserts the specified (numerical or string) `value` at the tail of the list named `key`. -->
+
+该特性在 `v0.10.6` 版本首次引入。
+
+更多功能请参考 [ngx.shared.DICT](#ngxshareddict)。
+
+[返回目录](#nginx-api-for-lua)
+
+ngx.shared.DICT.lpop
+--------------------
+**syntax:** *val, err = ngx.shared.DICT:lpop(key)*
+
+**context:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
+
+删除并返回基于共享字典 [ngx.shared.DICT](#ngxshareddict) 命名为 `key` 链表的第一个对象。
+
+<!-- Removes and returns the first element of the list named `key` in the shm-based dictionary [ngx.shared.DICT](#ngxshareddict). -->
+
+如果 `key` 不存在，它将返回 `nil`。当 `key` 已经存在却不是链表时，将返回 `nil` 和 `"value not a list"`。
+
+<!-- If `key` does not exist, it will return `nil`. When the `key` already takes a value that is not a list, it will return `nil` and `"value not a list"`. -->
+
+该特性在 `v0.10.6` 版本首次引入。
+
+更多功能请参考 [ngx.shared.DICT](#ngxshareddict)。
+
+[返回目录](#nginx-api-for-lua)
+
+ngx.shared.DICT.rpop
+--------------------
+**syntax:** *val, err = ngx.shared.DICT:rpop(key)*
+
+**context:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
+
+删除并返回基于共享字典 [ngx.shared.DICT](#ngxshareddict) 命名为 `key` 链表的最后一个对象。
+
+<!--
+Removes and returns the last element of the list named `key` in the shm-based dictionary [ngx.shared.DICT](#ngxshareddict).
+-->
+
+如果 `key` 不存在，它将返回 `nil`。当 `key` 已经存在却不是链表时，将返回 `nil` 和 `"value not a list"`。
+
+<!--
+If `key` does not exist, it will return `nil`. When the `key` already takes a value that is not a list, it will return `nil` and `"value not a list"`.
+ -->
+
+该特性在 `v0.10.6` 版本首次引入。
+
+更多功能请参考 [ngx.shared.DICT](#ngxshareddict)。
+
+[返回目录](#nginx-api-for-lua)
+
+ngx.shared.DICT.llen
+--------------------
+**syntax:** *len, err = ngx.shared.DICT:llen(key)*
+
+**context:** *init_by_lua&#42;, set_by_lua&#42;, rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, header_filter_by_lua&#42;, body_filter_by_lua&#42;, log_by_lua&#42;, ngx.timer.&#42;, balancer_by_lua&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;, ssl_session_store_by_lua&#42;*
+
+返回基于共享字典 [ngx.shared.DICT](#ngxshareddict) 命名为 `key` 的链表长度。
+
+<!--
+Returns the number of elements in the list named `key` in the shm-based dictionary [ngx.shared.DICT](#ngxshareddict).
+-->
+
+如果 `key` 不存在，将被解释为一个空链表，所以返回 0。
+当 `key` 已经存在却不是链表时，将返回 `nil` 和 `"value not a list"`。
+
+<!--
+If key does not exist, it is interpreted as an empty list and 0 is returned. When the `key` already takes a value that is not a list, it will return `nil` and `"value not a list"`.
+-->
+
+该特性在 `v0.10.6` 版本首次引入。
+
+更多功能请参考 [ngx.shared.DICT](#ngxshareddict)。
+
+[返回目录](#nginx-api-for-lua)
+
 ngx.shared.DICT.flush_all
 -------------------------
 **语法:** *ngx.shared.DICT:flush_all()*
@@ -6287,7 +6488,7 @@ udpsock:setpeername
  location /test {
      resolver 8.8.8.8;
 
-     content_by_lua '
+     content_by_lua_block {
          local sock = ngx.socket.udp()
          local ok, err = sock:setpeername("my.memcached.server.domain", 11211)
          if not ok then
@@ -6296,7 +6497,7 @@ udpsock:setpeername
          end
          ngx.say("successfully connected to memcached!")
          sock:close()
-     ';
+     }
  }
 ```
 
@@ -6422,6 +6623,7 @@ ngx.socket.tcp
 * [receive](#tcpsockreceive)
 * [close](#tcpsockclose)
 * [settimeout](#tcpsocksettimeout)
+* [settimeouts](#tcpsocksettimeouts)
 * [setoption](#tcpsocksetoption)
 * [receiveuntil](#tcpsockreceiveuntil)
 * [setkeepalive](#tcpsocksetkeepalive)
@@ -6476,7 +6678,7 @@ tcpsock:connect
  location /test {
      resolver 8.8.8.8;
 
-     content_by_lua '
+     content_by_lua_block {
          local sock = ngx.socket.tcp()
          local ok, err = sock:connect("www.google.com", 80)
          if not ok then
@@ -6485,7 +6687,7 @@ tcpsock:connect
          end
          ngx.say("successfully connected to google!")
          sock:close()
-     ';
+     }
  }
 ```
 
@@ -6756,6 +6958,41 @@ tcpsock:settimeout
 
 [返回目录](#nginx-api-for-lua)
 
+tcpsock:settimeouts
+-------------------
+**syntax:** *tcpsock:settimeouts(connect_timeout, send_timeout, read_timeout)*
+
+**context:** *rewrite_by_lua&#42;, access_by_lua&#42;, content_by_lua&#42;, ngx.timer.&#42;, ssl_certificate_by_lua&#42;, ssl_session_fetch_by_lua&#42;*
+
+设置连接超时阈值、发送超时阈值和读取超时阈值，以毫秒为单位控制随后的 socket 操作（[connect](#tcpsockconnect)， [send](#tcpsocksend)， [receive](#tcpsockreceive) 和 [receiveuntil](#tcpsockreceiveuntil) 方法返回的迭代操作 ）。
+
+<!--
+Sets the connect timeout thresold, send timeout threshold, and read timeout threshold, respetively, in milliseconds, for subsequent socket
+operations ([connect](#tcpsockconnect), [send](#tcpsocksend), [receive](#tcpsockreceive), and iterators returned from [receiveuntil](#tcpsockreceiveuntil)).
+-->
+
+通过该方法设置定的值，相比这些配置指令有更高的优先级，比如：[lua_socket_connect_timeout](#lua_socket_connect_timeout)、[lua_socket_send_timeout](#lua_socket_send_timeout) 和 [lua_socket_read_timeout](#lua_socket_read_timeout)。
+
+<!--
+Settings done by this method takes priority over those config directives, i.e., [lua_socket_connect_timeout](#lua_socket_connect_timeout), [lua_socket_send_timeout](#lua_socket_send_timeout), and [lua_socket_read_timeout](#lua_socket_read_timeout).
+-->
+
+推荐使用 [settimeouts](#tcpsocksettimeouts) 方法替代 [settimeout](#tcpsocksettimeout) 。
+
+<!--
+You are recommended to use [settimeouts](#tcpsocksettimeouts) instead of [settimeout](#tcpsocksettimeout).
+-->
+
+注意：该方法 *不* 影响 [lua_socket_keepalive_timeout](#lua_socket_keepalive_timeout) 设定，这种情况应调用 [setkeepalive](#tcpsocksetkeepalive) 方法完成目的。
+
+<!--
+Note that this method does *not* affect the [lua_socket_keepalive_timeout](#lua_socket_keepalive_timeout) setting; the `timeout` argument to the [setkeepalive](#tcpsocksetkeepalive) method should be used for this purpose instead.
+-->
+
+该特性在 `v0.10.7` 版本首次引入。
+
+[返回目录](#nginx-api-for-lua)
+
 tcpsock:setoption
 -----------------
 **语法:** *tcpsock:setoption(option, value?)*
@@ -6845,31 +7082,31 @@ ngx.get_phase
 检索当前正在执行的阶段名称。返回值可能有：
 
 * `init`
-    [init_by_lua](#init_by_lua) 或 [init_by_lua_file](#init_by_lua_file) 的运行环境。
+    [init_by_lua*](#init_by_lua) 运行环境。
 * `init_worker`
-    [init_worker_by_lua](#init_worker_by_lua) 或 [init_worker_by_lua_file](#init_worker_by_lua_file) 的运行环境。
+    [init_worker_by_lua*](#init_worker_by_lua) 运行环境。
 * `ssl_cert`
-    [ssl_certificate_by_lua_block](#ssl_certificate_by_lua_block) 或 [ssl_certificate_by_lua_file](#ssl_certificate_by_lua_file) 的运行环境。
+    [ssl_certificate_by_lua_block*](#ssl_certificate_by_lua_block) 运行环境。
 * `ssl_session_fetch`
-    [ssl_session_fetch_by_lua*](#ssl_session_fetch_by_lua_block) 的运行环境.
+    [ssl_session_fetch_by_lua*](#ssl_session_fetch_by_lua_block) 运行环境.
 * `ssl_session_store`
-    [ssl_session_store_by_lua*](#ssl_session_store_by_lua_block) 的运行环境.
+    [ssl_session_store_by_lua*](#ssl_session_store_by_lua_block) 运行环境.
 * `set`
-    [set_by_lua](#set_by_lua) 或 [set_by_lua_file](#set_by_lua_file) 的运行环境。
+    [set_by_lua*](#set_by_lua) 运行环境。
 * `rewrite`
-    [rewrite_by_lua](#rewrite_by_lua) 或 [rewrite_by_lua_file](#rewrite_by_lua_file) 的运行环境。
+    [rewrite_by_lua*](#rewrite_by_lua) 运行环境。
 * `balancer`
-    [balancer_by_lua_block](#balancer_by_lua_block) 或 [balancer_by_lua_file](#balancer_by_lua_file) 的运行环境。
+    [balancer_by_lua_*](#balancer_by_lua_block)  运行环境。
 * `access`
-    [access_by_lua](#access_by_lua) 或 [access_by_lua_file](#access_by_lua_file)。
+    [access_by_lua*](#access_by_lua) 运行环境。
 * `content`
-    [content_by_lua](#content_by_lua) 或 [content_by_lua_file](#content_by_lua_file) 的运行环境。
+    [content_by_lua*](#content_by_lua) 运行环境。
 * `header_filter`
-    [header_filter_by_lua](#header_filter_by_lua) 或 [header_filter_by_lua_file](#header_filter_by_lua_file) 的运行环境。
+    [header_filter_by_lua*](#header_filter_by_lua) 运行环境。
 * `body_filter`
-    [body_filter_by_lua](#body_filter_by_lua) 或 [body_filter_by_lua_file](#body_filter_by_lua_file) 的运行环境。
+    [body_filter_by_lua*](#body_filter_by_lua) 运行环境。
 * `log`
-    [log_by_lua](#log_by_lua) 或 [log_by_lua_file](#log_by_lua_file) 的运行环境。
+    [log_by_lua*](#log_by_lua) 运行环境。
 * `timer`
     [ngx.timer.*](#ngxtimerat) 类的用户回调函数运行环境。
 
@@ -7454,7 +7691,6 @@ ngx.ocsp
 **语法:** *local ocsp = require "ngx.ocsp"*
 
 该模块提供 API 完成 OCSP 查询、OCSP 响应验证和 OCSP stapling planting 。
-<!-- todo，最后的单词，不知道如何翻译 -->
 
 通常，该模块与 [ngx.ssl](https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/ssl.md) 模块一起配合在 [ssl_certificate_by_lua*](#ssl_certificate_by_lua_block) 的环境中使用。
 
